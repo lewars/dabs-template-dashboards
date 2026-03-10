@@ -1,0 +1,7 @@
+targets:
+  staging:
+    workspace:
+      host: https://staging.databricks.com
+    variables:
+      catalog_name: staging_catalog
+      schema_name: staging_schema

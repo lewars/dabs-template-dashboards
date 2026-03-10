@@ -1,0 +1,9 @@
+resources:
+  dashboards:
+    analytics_dashboard:
+      display_name: "Operations Overview [${bundle.target}]"
+      file_path: ./src/dashboards/ops_overview.json
+      warehouse_id: ${var.warehouse_id}
+      access_control:
+        - group_name: users
+          permission_level: CAN_VIEW

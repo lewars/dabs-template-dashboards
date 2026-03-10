@@ -1,0 +1,21 @@
+version: '3'
+
+tasks:
+  validate:
+    desc: "Executes databricks bundle validate and runs pytest for unit/integration logic."
+    cmds:
+      - databricks bundle validate
+      - pytest tests/
+    silent: true
+
+  deploy:sandbox:
+    desc: "Deploys the current branch to the user's personal workspace."
+    cmds:
+      - databricks bundle deploy -t sandbox
+    silent: true
+
+  teardown:
+    desc: "Permanently removes sandbox resources to optimize cloud spend."
+    cmds:
+      - databricks bundle destroy -t sandbox
+    silent: true
