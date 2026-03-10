@@ -16,6 +16,9 @@ jobs:
       - name: Setup Task
         uses: arduino/setup-task@v1
 
+      - name: Install Databricks CLI
+        run: task install
+
       - name: Deploy to Prod
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
