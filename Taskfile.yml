@@ -1,6 +1,12 @@
 version: '3'
 
 tasks:
+  install:
+    desc: "Installs the Databricks CLI."
+    cmds:
+      - curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/setup.sh | sh
+    silent: true
+
   validate:
     desc: "Executes databricks bundle validate and runs pytest for unit/integration logic."
     cmds:
