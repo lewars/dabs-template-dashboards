@@ -57,10 +57,3 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# LLM
-.GEMINI.md
-.gemini
-
-# Misc
-docs/examples/
