@@ -1,27 +1,176 @@
+---
 version: '3'
 
+vars:
+  BUNDLE_NAME: dabs-template-dashboards
+
 tasks:
-  install:
-    desc: "Installs the Databricks CLI."
-    cmds:
-      - curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/setup.sh | sh
-    silent: true
 
   validate:
-    desc: "Executes databricks bundle validate and runs pytest for unit/integration logic."
+    desc: >
+      Executes databricks bundle validate and runs pytest
+      for unit/integration logic.
     cmds:
       - databricks bundle validate
       - pytest tests/
     silent: true
 
   deploy:sandbox:
-    desc: "Deploys the current branch to the user's personal workspace."
+    desc: "Deploy to personal sandbox (isolated by user + branch)"
+    vars:
+      WAREHOUSE_ID: '{{.WAREHOUSE_ID | default ""}}'
     cmds:
-      - databricks bundle deploy -t sandbox
+      - |
+        ARGS="-t sandbox"
+        if [ -n "{{.WAREHOUSE_ID}}" ]; then
+          ARGS="$ARGS --var warehouse_id={{.WAREHOUSE_ID}}"
+        fi
+        databricks bundle deploy $ARGS
     silent: true
+
+  deploy:staging:
+    desc: "Deploy to Staging (internal use / CI)"
+    vars:
+      WAREHOUSE_ID: '{{.WAREHOUSE_ID | default ""}}'
+    cmds:
+      - |
+        ARGS="-t staging"
+        if [ -n "{{.WAREHOUSE_ID}}" ]; then
+          ARGS="$ARGS --var warehouse_id={{.WAREHOUSE_ID}}"
+        fi
+        databricks bundle deploy $ARGS
+
+  deploy:prod:
+    desc: "Deploy to Production (Service Principal only)"
+    vars:
+      WAREHOUSE_ID: '{{.WAREHOUSE_ID | default ""}}'
+    cmds:
+      - |
+        ARGS="-t prod --var sp_id=${PROD_SP_ID}"
+        if [ -n "{{.WAREHOUSE_ID}}" ]; then
+          ARGS="$ARGS --var warehouse_id={{.WAREHOUSE_ID}}"
+        fi
+        databricks bundle deploy $ARGS
+    requires:
+      vars: [PROD_SP_ID]
+
+  destroy:sandbox:
+    desc: "Tear down sandbox resources for the current user + branch"
+    cmds:
+      - databricks bundle destroy -t sandbox --auto-approve
 
   teardown:
     desc: "Permanently removes sandbox resources to optimize cloud spend."
     cmds:
-      - databricks bundle destroy -t sandbox
+      - task: destroy:sandbox
     silent: true
+
+  destroy:staging:
+    desc: "Tear down Staging resources (use with caution)"
+    prompt: "This will destroy all Staging resources. Continue?"
+    cmds:
+      - databricks bundle destroy -t staging --auto-approve
+
+  format:
+    desc: "Format all Python source and test files with black"
+    cmds:
+      - black src/ tests/
+
+  format:check:
+    desc: "Check formatting without modifying files (used in CI)"
+    cmds:
+      - black --check src/ tests/
+
+  lint:
+    desc: "Lint all Python source and test files with ruff"
+    cmds:
+      - ruff check src/ tests/
+
+  lint:fix:
+    desc: "Lint and auto-fix all fixable ruff violations"
+    cmds:
+      - ruff check --fix src/ tests/
+
+  test:unit:
+    desc: "Run unit tests (no live Databricks connection required)"
+    cmds:
+      - pytest tests/unit/ -v
+
+  test:integration:
+    desc: "Run integration tests against Staging (requires live workspace)"
+    cmds:
+      - pytest tests/integration/ -v
+
+  test:nonfunctional:
+    desc: "Run performance / SLO tests against Staging or Production"
+    cmds:
+      - pytest tests/nonfunctional/ -v
+
+  test:all:
+    desc: "Run the full test suite (unit → integration → nonfunctional)"
+    cmds:
+      - task: test:unit
+      - task: test:integration
+      - task: test:nonfunctional
+
+  setup:
+    desc: "Install all required dependencies"
+    cmds:
+      - task: setup:databricks
+      - task: setup:python
+
+  setup:databricks:
+    desc: "Installs the Databricks CLI."
+    cmds:
+      - |
+        SETUP_URL="https://raw.githubusercontent.com/databricks"
+        curl -fsSL "$SETUP_URL/setup-cli/main/setup.sh" | sh
+    silent: true
+
+  setup:python:
+    desc: "Install local development dependencies"
+    cmds:
+      - pip install -r requirements-dev.txt
+
+  notify:
+    desc: >
+      Send a Teams webhook notification (STATUS, TARGET_ENV,
+      BUNDLE_VERSION, TEAMS_WEBHOOK_URL required)
+    cmds:
+      - |
+        bash scripts/notify.sh \
+          --status "${STATUS}" \
+          --env "${TARGET_ENV}" \
+          --version "${BUNDLE_VERSION}" \
+          --webhook_url "${TEAMS_WEBHOOK_URL}"
+    requires:
+      vars: [STATUS, TARGET_ENV, BUNDLE_VERSION, TEAMS_WEBHOOK_URL]
+
+  auth:status:
+    desc: "Check current Databricks authentication status"
+    cmds:
+      - databricks auth status
+
+  auth:login:
+    desc: >
+      Authenticate with Databricks (interactive, sandbox/local use only)
+    cmds:
+      - |
+        if [ -n "${DATABRICKS_HOST:-}" ]; then
+          databricks auth login --host "${DATABRICKS_HOST}"
+        elif databricks auth env --host 2>/dev/null | \
+          grep -q "DATABRICKS_HOST"; then
+          databricks auth login
+        else
+          echo "Error: DATABRICKS_HOST not set, no host in ~/.databrickscfg" >&2
+          echo "Usage: DATABRICKS_HOST=https://<ws>.azuredatabricks.net \\" >&2
+          echo "  task auth:login" >&2
+          exit 1
+        fi
+
+  setup:secret-scope:
+    desc: "Create a Databricks secret scope for the bundle (sandbox only)"
+    cmds:
+      - |
+        databricks secrets create-scope {{.BUNDLE_NAME}} \
+          --initial-manage-principal users
