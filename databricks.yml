@@ -1,0 +1,17 @@
+bundle:
+  name: dabs-template-dashboards
+
+variables:
+  catalog_name:
+    description: "The Unity Catalog name"
+    default: "sandbox_catalog"
+  schema_name:
+    description: "The Unity Catalog schema name"
+    default: "sandbox_schema"
+  warehouse_id:
+    description: "The SQL Warehouse ID used by the dashboard"
+    default: "default_warehouse_id"
+
+include:
+  - targets/*.yml
+  - resources/*.yml

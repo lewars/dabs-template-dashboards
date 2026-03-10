@@ -1,0 +1,21 @@
+name: Deploy Staging
+
+"on":
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Task
+        uses: arduino/setup-task@v1
+
+      - name: Validate
+        run: task validate
+
+      - name: Deploy to Staging
+        run: databricks bundle deploy -t staging

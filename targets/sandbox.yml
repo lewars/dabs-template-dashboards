@@ -1,0 +1,7 @@
+targets:
+  sandbox:
+    workspace:
+      root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/sandbox
+    variables:
+      catalog_name: dev_catalog
+      schema_name: dev_schema

@@ -1,0 +1,23 @@
+name: Deploy Production
+
+"on":
+  repository_dispatch:
+    types: [release-command]
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy_prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Task
+        uses: arduino/setup-task@v1
+
+      - name: Deploy to Prod
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: databricks bundle deploy -t prod

@@ -1,0 +1,7 @@
+targets:
+  prod:
+    workspace:
+      host: https://prod.databricks.com
+    variables:
+      catalog_name: prod_catalog
+      schema_name: prod_schema
